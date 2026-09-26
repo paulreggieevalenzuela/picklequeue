@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+/* Palette taken from the court: hard-court blue, surround green, line white, optic-ball yellow. */
+:root {
+  --paper: #f1f5f3;
+  --surface: #ffffff;
+  --ink: #0e1a22;
+  --muted: #536b7a;
+  --line: #d3ded9;
+  --court: #1f4e6b;
+  --court-deep: #173c53;
+  --surround: #2f6b4f;
+  --ball: #d9f24a;
+  --ball-ink: #1c2400;
+  --danger: #b3261e;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0d171d;
+    --surface: #14232b;
+    --ink: #e6eeeb;
+    --muted: #93a9b5;
+    --line: #24404c;
+    --court: #2a6a8f;
+    --court-deep: #1f5575;
+    --surround: #3c8a66;
+    --danger: #f2877e;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0d171d;
+  --surface: #14232b;
+  --ink: #e6eeeb;
+  --muted: #93a9b5;
+  --line: #24404c;
+  --court: #2a6a8f;
+  --court-deep: #1f5575;
+  --surround: #3c8a66;
+  --danger: #f2877e;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-court: var(--court);
+  --color-court-deep: var(--court-deep);
+  --color-surround: var(--surround);
+  --color-ball: var(--ball);
+  --color-ball-ink: var(--ball-ink);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-barlow), system-ui, sans-serif;
+  --font-display: var(--font-barlow-condensed), var(--font-barlow), system-ui, sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ball);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The one orchestrated motion: a called match pulses once to draw the eye. */
+@keyframes called-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(217 242 74 / 0.9); }
+  100% { box-shadow: 0 0 0 14px rgb(217 242 74 / 0); }
+}
+.called-pulse {
+  animation: called-pulse 1.4s ease-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .called-pulse { animation: none; }
+}

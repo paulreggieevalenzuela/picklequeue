@@ -1,0 +1,23 @@
+{
+  "name": "pickle-queue",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "turbo run dev --filter=web",
+    "dev:mobile": "pnpm --filter mobile start",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "simulate": "pnpm --filter @pickle-queue/core simulate",
+    "db:migrate": "node db/migrate.mjs"
+  },
+  "devDependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "turbo": "^2.11.4",
+    "typescript": "^5.9.3"
+  }
+}

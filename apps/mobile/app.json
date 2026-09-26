@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Pickle Queue",
+    "slug": "pickle-queue",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.picklequeue"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1F4E6B",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "app.picklequeue"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "picklequeue",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
