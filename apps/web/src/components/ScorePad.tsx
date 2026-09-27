@@ -5,6 +5,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "@/lib/hooks";
+import { Elapsed } from "./Clock";
 import { QuickScore } from "./QuickScore";
 import { SessionGate } from "./SessionGate";
 import { Button } from "./ui";
@@ -43,7 +44,11 @@ export function ScorePad({ sessionId, courtId }: { sessionId: string; courtId: s
             Back to board
           </Link>
           <h1 className="font-display text-3xl font-extrabold">{court?.name ?? "Court"}</h1>
-          <span className="w-24" />
+          <span className="w-24 text-right">
+            {match?.status === "in_progress" && match.startedAt && (
+              <Elapsed since={match.startedAt} className="font-display text-2xl font-bold" />
+            )}
+          </span>
         </header>
 
         {!match || !score || !state ? (

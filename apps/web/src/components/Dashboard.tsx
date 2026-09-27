@@ -6,6 +6,7 @@ import { useSession } from "@/lib/hooks";
 import { AddPlayer } from "./AddPlayer";
 import { CourtCard } from "./CourtCard";
 import { MatchEditor } from "./MatchEditor";
+import { CopyListButton, PasteList } from "./PlayerLists";
 import { OffQueue, QueueList, UpNext } from "./Queue";
 import { SessionGate } from "./SessionGate";
 import { Button } from "./ui";
@@ -15,6 +16,7 @@ export function Dashboard({ sessionId }: { sessionId: string }) {
   const session = useSession(sessionId);
   const run = useRun(session);
   const [creating, setCreating] = useState(false);
+  const [pasting, setPasting] = useState(false);
   const { state, board, isOrganizer } = session;
 
   return (
@@ -94,15 +96,22 @@ export function Dashboard({ sessionId }: { sessionId: string }) {
                     Check someone in
                   </h2>
                   <AddPlayer run={run} />
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => setPasting(true)}>
+                      Paste a list
+                    </Button>
+                    <CopyListButton state={state} />
+                  </div>
                 </section>
               )}
               <UpNext state={state} board={board} run={run} organizer={isOrganizer} />
               <QueueList state={state} board={board} run={run} organizer={isOrganizer} />
-              <OffQueue board={board} run={run} organizer={isOrganizer} />
+              <OffQueue state={state} board={board} run={run} organizer={isOrganizer} />
             </aside>
           </main>
 
           {creating && <MatchEditor state={state} open onClose={() => setCreating(false)} run={run} />}
+          {pasting && <PasteList state={state} run={run} open onClose={() => setPasting(false)} />}
         </div>
       )}
     </SessionGate>

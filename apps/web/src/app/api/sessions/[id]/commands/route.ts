@@ -2,7 +2,7 @@ import { EngineError, applyCommand, commandEnvelopeSchema, type Command } from "
 import { db, isOrganizer, loadSession, notConfigured } from "@/lib/server/db";
 
 /** Commands a player may send about themselves without the organizer token. */
-const PLAYER_COMMANDS = new Set<Command["type"]>(["AddPlayer", "SetRest", "SetAway", "ReturnPlayer", "SetPartnerRequest"]);
+const PLAYER_COMMANDS = new Set<Command["type"]>(["AddPlayer", "RemovePlayer", "SetRest", "SetAway", "ReturnPlayer", "SetPartnerRequest"]);
 
 /**
  * POST /api/sessions/:id/commands  { expectedVersion, command }

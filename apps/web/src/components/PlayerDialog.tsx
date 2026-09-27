@@ -21,7 +21,7 @@ export function PlayerDialog({ state, player, open, onClose, run }: { state: Ses
     if (ok) onClose();
   }
 
-  const act = (type: "SetAway" | "RemovePlayer", msg: string) => {
+  const act = (type: "SetAway" | "RemovePlayer" | "ReturnPlayer", msg: string) => {
     if (run({ type, playerId: player.id }, msg)) onClose();
   };
 
@@ -60,12 +60,64 @@ export function PlayerDialog({ state, player, open, onClose, run }: { state: Ses
           <Button variant="primary" onClick={save}>
             Save changes
           </Button>
-          <Button onClick={() => act("SetAway", `${player.name} is away and keeps their place`)}>Mark away</Button>
-          <Button variant="danger" onClick={() => act("RemovePlayer", `${player.name} checked out`)}>
-            Check out
-          </Button>
         </div>
+        <CheckOut player={player} act={act} />
       </div>
     </Dialog>
+  );
+}
+
+/** Leaving early: what "check out" means depends on where the player is right now. */
+function CheckOut({ player, act }: { player: SessionPlayer; act: (type: "SetAway" | "RemovePlayer" | "ReturnPlayer", msg: string) => void }) {
+  const name = player.name;
+  const box = "flex flex-col gap-2 rounded-xl border border-line p-3";
+  if (player.status === "left") {
+    return (
+      <div className={box}>
+        <p className="text-sm text-muted">{name} checked out. Checking back in keeps their games and stats.</p>
+        <Button variant="court" className="self-start" onClick={() => act("ReturnPlayer", `${name} is back in line`)}>
+          Check back in
+        </Button>
+      </div>
+    );
+  }
+  if (player.status === "playing") {
+    return player.leaveAfterMatch ? (
+      <div className={box}>
+        <p className="text-sm font-semibold text-danger">{name} checks out when this game ends.</p>
+        <Button className="self-start" onClick={() => act("ReturnPlayer", `${name} is staying`)}>
+          Keep {name} in the session
+        </Button>
+      </div>
+    ) : (
+      <div className={box}>
+        <p className="text-sm text-muted">Leaving early? The game finishes and counts, then they&apos;re checked out.</p>
+        <Button variant="danger" className="self-start" onClick={() => act("RemovePlayer", `${name} will check out after this game`)}>
+          Check out after this game
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className={box}>
+      <p className="text-sm text-muted">
+        {player.status === "called"
+          ? "They're called to a court. Checking out leaves an open seat you can fill from the queue."
+          : "Leaving early? They're taken out of the line and upcoming matches are rebuilt."}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {(player.status === "resting" || player.status === "away") && (
+          <Button variant="court" onClick={() => act("ReturnPlayer", `${name} is back in line`)}>
+            Back in line
+          </Button>
+        )}
+        {player.status !== "away" && player.status !== "resting" && (
+          <Button onClick={() => act("SetAway", `${name} is away and keeps their place`)}>Mark away</Button>
+        )}
+        <Button variant="danger" onClick={() => act("RemovePlayer", `${name} checked out`)}>
+          Check out now
+        </Button>
+      </div>
+    </div>
   );
 }

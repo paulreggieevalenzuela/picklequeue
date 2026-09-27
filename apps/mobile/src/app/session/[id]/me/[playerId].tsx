@@ -1,7 +1,7 @@
 import { getPlayerStatus, type Command, type SessionState } from "@pickle-queue/core";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { fetchSession, sendCommand } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
 import { Body, PrimaryButton } from "@/lib/ui";
@@ -50,13 +50,20 @@ export default function MyStatus() {
         {called ? (
           <Text style={[styles.big, { color: t.ballInk }]}>You&apos;re up on {view.courtName}</Text>
         ) : view.liveMatch ? (
-          <Text style={styles.big}>Playing on {view.courtName}</Text>
+          <>
+            <Text style={styles.big}>Playing on {view.courtName}</Text>
+            {view.liveMatch.startedAt && (
+              <Text style={styles.sub}>Game time {Math.floor((now - view.liveMatch.startedAt) / 60000)} min</Text>
+            )}
+            {p.leaveAfterMatch && <Text style={styles.sub}>You&apos;ll be checked out when this game ends.</Text>}
+          </>
         ) : p.status === "resting" || p.status === "away" ? (
           <Text style={styles.big}>{p.status === "resting" ? "Resting" : "Away"}</Text>
         ) : view.entry ? (
           <>
             <Text style={styles.huge}>#{view.entry.position}</Text>
             <Text style={styles.sub}>in line, about {Math.max(0, view.entry.etaMin)} min</Text>
+            <Text style={styles.sub}>You&apos;ve waited {view.entry.waitingMin} min</Text>
           </>
         ) : (
           <Text style={styles.big}>Checked out</Text>
@@ -74,7 +81,22 @@ export default function MyStatus() {
         </View>
       )}
       {(p.status === "resting" || p.status === "away" || p.status === "left") && (
-        <PrimaryButton title="I'm back" onPress={() => send({ type: "ReturnPlayer", playerId, at: Date.now() })} />
+        <PrimaryButton title={p.status === "left" ? "Check back in" : "I'm back"} onPress={() => send({ type: "ReturnPlayer", playerId, at: Date.now() })} />
+      )}
+
+      {p.status !== "left" && !p.leaveAfterMatch && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            Alert.alert(p.status === "playing" ? "Check out after this game?" : "Check out and leave the line?", undefined, [
+              { text: "Cancel", style: "cancel" },
+              { text: "Check out", style: "destructive", onPress: () => send({ type: "RemovePlayer", playerId, at: Date.now() }) },
+            ])
+          }
+          style={styles.leave}
+        >
+          <Text style={[styles.leaveText, { color: t.danger }]}>I&apos;m leaving</Text>
+        </Pressable>
       )}
 
       <Body muted>
@@ -92,4 +114,6 @@ const styles = StyleSheet.create({
   huge: { color: "#fff", fontSize: 72, fontWeight: "900", fontVariant: ["tabular-nums"] },
   sub: { color: "#fff", fontSize: 18 },
   row: { flexDirection: "row", gap: 12 },
+  leave: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+  leaveText: { fontSize: 17, fontWeight: "700" },
 });

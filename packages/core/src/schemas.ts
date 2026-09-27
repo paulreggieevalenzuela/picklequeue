@@ -28,6 +28,11 @@ const teamIds = z.array(id).max(2);
 
 export const commandSchema = z.discriminatedUnion("type", [
   z.object({ ...base, type: z.literal("AddPlayer"), player: z.object({ id, name: z.string().trim().min(1).max(40), skill: skill.optional() }) }),
+  z.object({
+    ...base,
+    type: z.literal("AddPlayers"),
+    players: z.array(z.object({ id, name: z.string().trim().min(1).max(40), skill: skill.optional() })).min(1).max(100),
+  }),
   z.object({ ...base, type: z.literal("RemovePlayer"), playerId: id }),
   z.object({
     ...base,
@@ -43,6 +48,7 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ ...base, type: z.literal("SetPartnerRequest"), playerId: id, partnerId: id.nullable() }),
   z.object({ ...base, type: z.literal("SetGroup"), playerIds: z.array(id).min(1).max(4), groupId: id.nullable() }),
   z.object({ ...base, type: z.literal("AddCourt"), court: z.object({ id, name: z.string().min(1).max(30), format: format.nullish() }) }),
+  z.object({ ...base, type: z.literal("RenameCourt"), courtId: id, name: z.string().trim().min(1).max(30) }),
   z.object({ ...base, type: z.literal("DisableCourt"), courtId: id }),
   z.object({ ...base, type: z.literal("EnableCourt"), courtId: id }),
   z.object({ ...base, type: z.literal("CreateMatch"), matchId: id, teamA: teamIds, teamB: teamIds, courtId: id.nullish() }),

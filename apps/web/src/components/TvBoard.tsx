@@ -4,6 +4,7 @@ import { matchScore } from "@pickle-queue/core";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/hooks";
+import { Elapsed } from "./Clock";
 import { CourtDiagram } from "./CourtDiagram";
 import { SessionGate } from "./SessionGate";
 import { minutes } from "./ui";
@@ -39,6 +40,9 @@ export function TvBoard({ sessionId }: { sessionId: string }) {
                         <h2 className="font-display text-3xl font-bold">{court.name}</h2>
                         {match?.status === "called" && (
                           <span className="rounded bg-ball px-2 py-0.5 font-display text-xl font-bold text-ball-ink">Come to court</span>
+                        )}
+                        {match?.status === "in_progress" && match.startedAt && (
+                          <Elapsed since={match.startedAt} className="font-display text-3xl font-bold text-white/90" />
                         )}
                       </div>
                       <CourtDiagram
@@ -80,6 +84,7 @@ export function TvBoard({ sessionId }: { sessionId: string }) {
                       <li key={q.player.id} className="flex gap-3 py-0.5">
                         <span className="tabular w-8 text-right text-white/60">{q.position}</span>
                         <span className="truncate">{q.player.name}</span>
+                        <span className="tabular ml-auto pl-2 text-white/60">{q.waitingMin}m</span>
                       </li>
                     ))}
                 </ol>

@@ -71,17 +71,26 @@ export function QueueList({ state, board, run, organizer }: { state: SessionStat
         <Empty>Nobody is waiting. Add players or share the join code.</Empty>
       ) : (
         <ol className="divide-y divide-line overflow-hidden rounded-xl bg-surface ring-1 ring-line">
-          {board.queue.map(({ player, position, etaMin, upNextIndex }) => (
+          {board.queue.map(({ player, position, etaMin, waitingMin, upNextIndex }) => (
             <li key={player.id} className="flex items-center gap-3 px-3 py-2">
               <span className={clsx("tabular w-8 text-center font-display text-2xl font-bold", upNextIndex === 0 ? "text-ink" : "text-muted")}>
                 {position}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 truncate font-semibold">
-                  {player.name} <SkillBadge skill={player.skill} />
+                <p className="flex items-center gap-2 font-semibold">
+                  {organizer ? (
+                    <button type="button" onClick={() => setSelected(player)} className="truncate text-left hover:underline" title="Edit or check out">
+                      {player.name}
+                    </button>
+                  ) : (
+                    <span className="truncate">{player.name}</span>
+                  )}
+                  <SkillBadge skill={player.skill} />
                 </p>
                 <p className="text-sm text-muted">
-                  {player.gamesPlayed} {player.gamesPlayed === 1 ? "game" : "games"}, {minutes(etaMin)}
+                  <span className={clsx("tabular", waitingMin >= 20 && "font-semibold text-danger")}>Waiting {waitingMin} min</span>
+                  {", "}
+                  {player.gamesPlayed} {player.gamesPlayed === 1 ? "game" : "games"}, on {etaMin <= 0 ? "next" : `in ${minutes(etaMin)}`}
                   {player.partnerRequestId && `, with ${state.players[player.partnerRequestId]?.name ?? "partner"}`}
                 </p>
               </div>
@@ -90,8 +99,8 @@ export function QueueList({ state, board, run, organizer }: { state: SessionStat
                   <Button size="sm" variant="quiet" onClick={() => run({ type: "SetRest", playerId: player.id }, `${player.name} is resting and keeps their place`)}>
                     Rest
                   </Button>
-                  <Button size="sm" variant="quiet" onClick={() => setSelected(player)}>
-                    More
+                  <Button size="sm" variant="danger" onClick={() => run({ type: "RemovePlayer", playerId: player.id }, `${player.name} checked out`)}>
+                    Check out
                   </Button>
                 </div>
               )}
@@ -104,24 +113,32 @@ export function QueueList({ state, board, run, organizer }: { state: SessionStat
   );
 }
 
-export function OffQueue({ board, run, organizer }: { board: Board; run: Run; organizer: boolean }) {
+export function OffQueue({ state, board, run, organizer }: { state: SessionState; board: Board; run: Run; organizer: boolean }) {
+  const [selected, setSelected] = useState<SessionPlayer | null>(null);
+  const left = Object.values(state.players).filter((p) => p.status === "left");
   const groups = [
-    { label: "Resting", players: board.resting },
-    { label: "Away", players: board.away },
+    { label: "Resting", players: board.resting, action: "Back in line" },
+    { label: "Away", players: board.away, action: "Back in line" },
   ].filter((g) => g.players.length > 0);
-  if (groups.length === 0) return null;
+  if (groups.length === 0 && left.length === 0) return null;
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       {groups.map((g) => (
         <div key={g.label}>
           <h2 className="mb-2 font-display text-xl font-bold">{g.label}</h2>
           <ul className="flex flex-wrap gap-2">
             {g.players.map((p) => (
               <li key={p.id} className="flex items-center gap-2 rounded-full bg-surface py-1 pr-1 pl-3 ring-1 ring-line">
-                <span className="font-semibold">{p.name}</span>
+                {organizer ? (
+                  <button type="button" className="font-semibold hover:underline" onClick={() => setSelected(p)} title="Edit or check out">
+                    {p.name}
+                  </button>
+                ) : (
+                  <span className="font-semibold">{p.name}</span>
+                )}
                 {organizer && (
                   <Button size="sm" variant="court" className="rounded-full" onClick={() => run({ type: "ReturnPlayer", playerId: p.id }, `${p.name} is back in line`)}>
-                    Back in line
+                    {g.action}
                   </Button>
                 )}
               </li>
@@ -129,6 +146,26 @@ export function OffQueue({ board, run, organizer }: { board: Board; run: Run; or
           </ul>
         </div>
       ))}
+      {left.length > 0 && (
+        <details>
+          <summary className="cursor-pointer font-display text-xl font-bold">Checked out ({left.length})</summary>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {left.map((p) => (
+              <li key={p.id} className="flex items-center gap-2 rounded-full bg-surface py-1 pr-1 pl-3 text-muted ring-1 ring-line">
+                <span>
+                  {p.name}, {p.gamesPlayed} {p.gamesPlayed === 1 ? "game" : "games"}
+                </span>
+                {organizer && (
+                  <Button size="sm" variant="quiet" className="rounded-full" onClick={() => run({ type: "ReturnPlayer", playerId: p.id }, `${p.name} checked back in`)}>
+                    Check back in
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {selected && <PlayerDialog key={selected.id} state={state} player={selected} open onClose={() => setSelected(null)} run={run} />}
     </section>
   );
 }

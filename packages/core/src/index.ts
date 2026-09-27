@@ -9,3 +9,4 @@ export * from "./queue/view";
 export * from "./queue/history";
 export * from "./schemas";
 export * from "./ids";
+export * from "./roster";

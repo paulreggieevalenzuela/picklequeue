@@ -330,6 +330,53 @@ function settle(s: SessionState, at: Timestamp) {
 // Command handlers
 // ---------------------------------------------------------------------------
 
+function addPlayer(s: SessionState, input: { id: PlayerId; name: string; skill?: number }, at: Timestamp) {
+  const existing = s.players[input.id];
+  if (existing && existing.status !== "left") throw new EngineError(`${existing.name} is already checked in.`, "conflict");
+  if (existing) {
+    existing.status = "waiting";
+    existing.leaveAfterMatch = false;
+    return;
+  }
+  const name = input.name.trim();
+  if (!name) throw new EngineError("Every player needs a name.", "invalid_input");
+  s.players[input.id] = {
+    id: input.id,
+    name,
+    skill: input.skill ?? 3.0,
+    status: "waiting",
+    checkedInAt: at,
+    lastPlayedAt: null,
+    gamesPlayed: 0,
+    gamesCredit: s.settings.lateArrivalRule ? lateArrivalCredit(s) : 0,
+    consecutiveGames: 0,
+    satOut: true,
+    priorityBoost: 0,
+    seq: s.nextSeq++,
+    partnerRequestId: null,
+    groupId: null,
+    wins: 0,
+    losses: 0,
+    pointsFor: 0,
+    pointsAgainst: 0,
+  };
+}
+
+function clearPartnerRequestsFor(s: SessionState, playerId: PlayerId) {
+  for (const q of Object.values(s.players)) if (q.partnerRequestId === playerId) q.partnerRequestId = null;
+}
+
+/** Players who checked out mid-game leave once their match is over. */
+function checkOutLeavers(s: SessionState, ids: PlayerId[]) {
+  for (const id of ids) {
+    const p = s.players[id];
+    if (!p?.leaveAfterMatch) continue;
+    p.leaveAfterMatch = false;
+    p.status = "left";
+    clearPartnerRequestsFor(s, id);
+  }
+}
+
 function completeMatch(s: SessionState, m: Match, scoreA: number, scoreB: number, at: Timestamp) {
   if (!isLive(m)) throw new EngineError("Only a called or live match can be completed.", "invalid_state");
   if (scoreA === scoreB) throw new EngineError("A match can't end in a tie.", "invalid_input");
@@ -369,6 +416,7 @@ function completeMatch(s: SessionState, m: Match, scoreA: number, scoreB: number
     for (let i = 0; i < team.length; i++) for (let j = i + 1; j < team.length; j++) bump(team[i]!, team[j]!, "partner");
   for (const a of m.teamA) for (const b of m.teamB) bump(a, b, "opponent");
 
+  checkOutLeavers(s, matchPlayers(m));
   if (s.settings.queueMode === "winners_stay" && m.courtId) winnersStay(s, m, winner, at);
 }
 
@@ -376,6 +424,7 @@ function winnersStay(s: SessionState, done: Match, winner: Team, at: Timestamp) 
   const court = s.courts.find((c) => c.id === done.courtId);
   if (!court?.active || courtMatch(s, court.id)) return;
   const winners = (winner === "A" ? done.teamA : done.teamB).map((id) => s.players[id]!);
+  if (winners.some((p) => p.status !== "waiting")) return; // someone checked out
   const cap = s.settings.maxConsecutive;
   if (cap !== null && winners.some((p) => p.consecutiveGames >= cap)) return;
 
@@ -399,8 +448,12 @@ function describe(s: SessionState, cmd: Command): string {
   switch (cmd.type) {
     case "AddPlayer":
       return `${cmd.player.name} checked in`;
+    case "AddPlayers":
+      return `${cmd.players.length} players checked in`;
     case "RemovePlayer":
-      return `${name(cmd.playerId)} left`;
+      return s.players[cmd.playerId]?.status === "playing"
+        ? `${name(cmd.playerId)} checks out after this game`
+        : `${name(cmd.playerId)} checked out`;
     case "UpdatePlayer":
       return `${name(cmd.playerId)} updated`;
     case "SetRest":
@@ -415,6 +468,8 @@ function describe(s: SessionState, cmd: Command): string {
       return cmd.groupId ? `Group: ${names(cmd.playerIds)}` : `Ungrouped ${names(cmd.playerIds)}`;
     case "AddCourt":
       return `Added ${cmd.court.name}`;
+    case "RenameCourt":
+      return `Renamed ${s.courts.find((c) => c.id === cmd.courtId)?.name ?? cmd.courtId} to ${cmd.name.trim()}`;
     case "DisableCourt":
       return `Disabled ${s.courts.find((c) => c.id === cmd.courtId)?.name ?? cmd.courtId}`;
     case "EnableCourt":
@@ -453,47 +508,32 @@ export function applyCommand(state: SessionState, cmd: Command): SessionState {
 
   switch (cmd.type) {
     case "AddPlayer": {
-      const existing = s.players[cmd.player.id];
-      if (existing && existing.status !== "left") throw new EngineError(`${existing.name} is already checked in.`, "conflict");
-      if (existing) {
-        existing.status = "waiting";
-        break;
-      }
-      s.players[cmd.player.id] = {
-        id: cmd.player.id,
-        name: cmd.player.name.trim(),
-        skill: cmd.player.skill ?? 3.0,
-        status: "waiting",
-        checkedInAt: at,
-        lastPlayedAt: null,
-        gamesPlayed: 0,
-        gamesCredit: s.settings.lateArrivalRule ? lateArrivalCredit(s) : 0,
-        consecutiveGames: 0,
-        satOut: true,
-        priorityBoost: 0,
-        seq: s.nextSeq++,
-        partnerRequestId: null,
-        groupId: null,
-        wins: 0,
-        losses: 0,
-        pointsFor: 0,
-        pointsAgainst: 0,
-      };
+      addPlayer(s, cmd.player, at);
+      break;
+    }
+    case "AddPlayers": {
+      if (cmd.players.length === 0) throw new EngineError("The list is empty.", "invalid_input");
+      for (const p of cmd.players) addPlayer(s, p, at);
       break;
     }
     case "RemovePlayer":
     case "SetRest":
     case "SetAway": {
       const p = getPlayer(s, cmd.playerId);
-      detach(s, p.id);
-      p.status = cmd.type === "RemovePlayer" ? "left" : cmd.type === "SetRest" ? "resting" : "away";
-      if (cmd.type === "RemovePlayer") {
-        for (const q of Object.values(s.players)) if (q.partnerRequestId === p.id) q.partnerRequestId = null;
+      if (cmd.type === "RemovePlayer" && p.status === "playing") {
+        // Leaving early mid-game: finish the game, then check out.
+        p.leaveAfterMatch = true;
+        break;
       }
+      detach(s, p.id);
+      p.leaveAfterMatch = false;
+      p.status = cmd.type === "RemovePlayer" ? "left" : cmd.type === "SetRest" ? "resting" : "away";
+      if (cmd.type === "RemovePlayer") clearPartnerRequestsFor(s, p.id);
       break;
     }
     case "ReturnPlayer": {
       const p = getPlayer(s, cmd.playerId);
+      p.leaveAfterMatch = false; // also cancels "check out after this game"
       if (p.status === "waiting" || p.status === "called" || p.status === "playing") break;
       // Priority fields are untouched, so the player keeps their place.
       p.status = "waiting";
@@ -520,6 +560,12 @@ export function applyCommand(state: SessionState, cmd: Command): SessionState {
     case "AddCourt": {
       if (s.courts.some((c) => c.id === cmd.court.id)) throw new EngineError("Court already exists.", "conflict");
       s.courts.push({ id: cmd.court.id, name: cmd.court.name, active: true, format: cmd.court.format ?? null });
+      break;
+    }
+    case "RenameCourt": {
+      const name = cmd.name.trim();
+      if (!name) throw new EngineError("Give the court a name.", "invalid_input");
+      getCourt(s, cmd.courtId).name = name.slice(0, 30);
       break;
     }
     case "DisableCourt": {
@@ -632,6 +678,7 @@ export function applyCommand(state: SessionState, cmd: Command): SessionState {
         matchPlayers(m).filter((id) => s.players[id]?.status === "called" || s.players[id]?.status === "playing"),
         "waiting",
       );
+      checkOutLeavers(s, matchPlayers(m));
       if (m.status === "proposed") s.matches = s.matches.filter((x) => x.id !== m.id);
       else {
         m.status = "cancelled";

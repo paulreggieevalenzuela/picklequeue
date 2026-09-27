@@ -59,6 +59,8 @@ export interface SessionPlayer {
   partnerRequestId: PlayerId | null;
   /** Group id for paddle-stack mode. */
   groupId: string | null;
+  /** Checked out while on court: leaves as soon as the current game ends. */
+  leaveAfterMatch?: boolean;
   wins: number;
   losses: number;
   pointsFor: number;
@@ -182,6 +184,8 @@ export type Command =
       type: "AddPlayer";
       player: { id: PlayerId; name: string; skill?: number };
     })
+  | (Base & { type: "AddPlayers"; players: { id: PlayerId; name: string; skill?: number }[] })
+  /** Check out. A player mid-game is checked out when that game ends. */
   | (Base & { type: "RemovePlayer"; playerId: PlayerId })
   | (Base & { type: "UpdatePlayer"; playerId: PlayerId; name?: string; skill?: number; priorityBoost?: number })
   | (Base & { type: "SetRest"; playerId: PlayerId })
@@ -190,6 +194,7 @@ export type Command =
   | (Base & { type: "SetPartnerRequest"; playerId: PlayerId; partnerId: PlayerId | null })
   | (Base & { type: "SetGroup"; playerIds: PlayerId[]; groupId: string | null })
   | (Base & { type: "AddCourt"; court: { id: CourtId; name: string; format?: Format | null } })
+  | (Base & { type: "RenameCourt"; courtId: CourtId; name: string })
   | (Base & { type: "DisableCourt"; courtId: CourtId })
   | (Base & { type: "EnableCourt"; courtId: CourtId })
   | (Base & {

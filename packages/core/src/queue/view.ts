@@ -1,7 +1,7 @@
 import type { Court, Match, PlayerId, SessionPlayer, SessionState, Timestamp } from "../types";
 import { courtMatch, matchPlayers, proposedMatches } from "./engine";
 import { teamSize } from "./matchmaking";
-import { rankWaiting } from "./priority";
+import { rankWaiting, waitingSince } from "./priority";
 
 export interface CourtView {
   court: Court;
@@ -16,6 +16,8 @@ export interface QueueEntry {
   position: number;
   /** Estimated minutes until on court. */
   etaMin: number;
+  /** Minutes since they came off court (or checked in). */
+  waitingMin: number;
   /** Index into `upNext`, if already slotted into a proposed match. */
   upNextIndex: number | null;
 }
@@ -74,7 +76,13 @@ export function getBoard(state: SessionState, now: Timestamp): Board {
   const queue: QueueEntry[] = [...inUpNext, ...rest].map((player, i) => {
     const up = slotted.get(player.id) ?? null;
     const virtualSlot = up ?? upNext.length + Math.floor((i - inUpNext.length) / perMatch);
-    return { player, position: i + 1, etaMin: etaForSlot(virtualSlot), upNextIndex: up };
+    return {
+      player,
+      position: i + 1,
+      etaMin: etaForSlot(virtualSlot),
+      waitingMin: Math.max(0, Math.floor((now - waitingSince(player)) / 60000)),
+      upNextIndex: up,
+    };
   });
 
   const players = Object.values(state.players);

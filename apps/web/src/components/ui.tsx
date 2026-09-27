@@ -73,7 +73,7 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="m-0 mt-auto w-full max-w-none rounded-t-2xl bg-surface p-0 text-ink backdrop:bg-ink/50 sm:m-auto sm:max-w-lg sm:rounded-2xl"
+      className="m-0 mt-auto w-full max-w-none rounded-t-2xl bg-surface p-0 text-ink backdrop:bg-black/55 sm:m-auto sm:max-w-lg sm:rounded-2xl"
     >
       <div className="flex items-center justify-between border-b border-line px-5 py-4">
         <h2 className="font-display text-2xl font-bold">{title}</h2>

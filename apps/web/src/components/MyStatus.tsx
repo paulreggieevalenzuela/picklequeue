@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/lib/hooks";
 import { enableNotifications, notificationsSupported, notify } from "@/lib/notify";
+import { Elapsed } from "./Clock";
 import { SessionGate } from "./SessionGate";
 import { Button, Field, Select, minutes } from "./ui";
 import { useRun } from "./useRun";
@@ -65,7 +66,15 @@ export function MyStatus({ sessionId, playerId }: { sessionId: string; playerId:
                 </p>
               </>
             ) : view.liveMatch ? (
-              <p className="font-display text-4xl font-extrabold">Playing on {view.courtName}</p>
+              <>
+                <p className="font-display text-4xl font-extrabold">Playing on {view.courtName}</p>
+                {view.liveMatch.startedAt && (
+                  <p className="mt-1 text-lg">
+                    Game time <Elapsed since={view.liveMatch.startedAt} className="font-display text-2xl font-bold" />
+                  </p>
+                )}
+                {p.leaveAfterMatch && <p className="mt-1 text-white/80">You&apos;ll be checked out when this game ends.</p>}
+              </>
             ) : p.status === "resting" || p.status === "away" ? (
               <>
                 <p className="font-display text-4xl font-extrabold">{p.status === "resting" ? "Resting" : "Away"}</p>
@@ -79,6 +88,7 @@ export function MyStatus({ sessionId, playerId }: { sessionId: string; playerId:
                 <p className="mt-2 text-lg">
                   in line, {view.entry.etaMin <= 0 ? "on very soon" : `on in ${minutes(view.entry.etaMin)}`}
                 </p>
+                <p className="text-white/80">You&apos;ve waited {view.entry.waitingMin} min</p>
               </>
             ) : null}
           </section>
@@ -92,8 +102,22 @@ export function MyStatus({ sessionId, playerId }: { sessionId: string; playerId:
             )}
             {(p.status === "resting" || p.status === "away" || p.status === "left") && (
               <Button variant="primary" onClick={() => run({ type: "ReturnPlayer", playerId }, "You're back in line")}>
-                I&apos;m back
+                {p.status === "left" ? "Check back in" : "I'm back"}
               </Button>
+            )}
+            {p.status !== "left" && !p.leaveAfterMatch && (
+              <Button
+                variant="danger"
+                onClick={() => {
+                  if (!confirm(p.status === "playing" ? "Check out after this game?" : "Check out and leave the line?")) return;
+                  run({ type: "RemovePlayer", playerId }, p.status === "playing" ? "You'll be checked out after this game" : "You're checked out. Thanks for playing!");
+                }}
+              >
+                I&apos;m leaving
+              </Button>
+            )}
+            {p.leaveAfterMatch && (
+              <Button onClick={() => run({ type: "ReturnPlayer", playerId }, "Great, you're staying")}>I&apos;m staying</Button>
             )}
             {notificationsSupported() && !notifyOn && (
               <Button variant="court" onClick={async () => setNotifyOn(await enableNotifications())}>

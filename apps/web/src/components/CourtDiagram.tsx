@@ -7,14 +7,35 @@ function short(name: string) {
   return last ? `${first} ${last[0]}.` : (first ?? "");
 }
 
-function Seat({ player, align }: { player: SessionPlayer | undefined; align: "left" | "right" }) {
-  return (
-    <div className={clsx("flex min-w-0 items-center px-2", align === "right" && "justify-end text-right")}>
-      <span className={clsx("truncate font-display text-lg leading-tight font-semibold sm:text-xl", !player && "text-white/50 italic")}>
-        {player ? short(player.name) : "Open seat"}
-      </span>
-    </div>
+function Seat({
+  player,
+  align,
+  onSelect,
+}: {
+  player: SessionPlayer | undefined;
+  align: "left" | "right";
+  onSelect?: (p: SessionPlayer) => void;
+}) {
+  const label = (
+    <span
+      className={clsx(
+        "truncate font-display text-lg leading-tight font-semibold sm:text-xl",
+        !player && "text-white/50 italic",
+        player?.leaveAfterMatch && "line-through decoration-2",
+      )}
+    >
+      {player ? short(player.name) : "Open seat"}
+    </span>
   );
+  const cls = clsx("flex min-w-0 items-center px-2", align === "right" && "justify-end text-right");
+  if (player && onSelect) {
+    return (
+      <button type="button" onClick={() => onSelect(player)} className={clsx(cls, "hover:bg-white/10")} title={`${player.name}: options`}>
+        {label}
+      </button>
+    );
+  }
+  return <div className={cls}>{label}</div>;
 }
 
 /**
@@ -29,6 +50,7 @@ export function CourtDiagram({
   scoreB,
   serving,
   dim,
+  onSelect,
   children,
 }: {
   teamA: (SessionPlayer | undefined)[];
@@ -37,6 +59,8 @@ export function CourtDiagram({
   scoreB?: number | null;
   serving?: "A" | "B" | null;
   dim?: boolean;
+  /** Makes player names tappable (organizer: check out, edit). */
+  onSelect?: (p: SessionPlayer) => void;
   children?: React.ReactNode;
 }) {
   const rows = Math.max(teamA.length, teamB.length);
@@ -63,12 +87,12 @@ export function CourtDiagram({
         <>
       <div className="absolute inset-y-0 left-0 grid" style={{ width: `calc(50% - ${kitchen})`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
         {Array.from({ length: rows }, (_, i) => (
-          <Seat key={i} player={teamA[i]} align="left" />
+          <Seat key={i} player={teamA[i]} align="left" onSelect={onSelect} />
         ))}
       </div>
       <div className="absolute inset-y-0 right-0 grid" style={{ width: `calc(50% - ${kitchen})`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
         {Array.from({ length: rows }, (_, i) => (
-          <Seat key={i} player={teamB[i]} align="right" />
+          <Seat key={i} player={teamB[i]} align="right" onSelect={onSelect} />
         ))}
       </div>
         </>
